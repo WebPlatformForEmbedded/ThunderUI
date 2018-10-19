@@ -7,8 +7,8 @@ class Bluetooth extends Plugin {
 
         this.discoveredDevices = [];
         this.pairedDevices = [];
+        this.connectedDevices = [];
         this.scanning = false;
-        this.connected = undefined;
         this.displayName = 'Bluetooth';
     }
 
@@ -20,9 +20,11 @@ class Bluetooth extends Plugin {
         </div>
 
         <div class="label grid__col grid__col--2-of-8">
-            Connected to
+            Connected Devices
         </div>
-        <div id="BT_Connected" class="text grid__col grid__col--6-of-8"></div>
+        <div class="text grid__col grid__col--6-of-8">
+            <select id="BT_ConnectedDevices"></select>
+        </div>
 
         <div class="label grid__col grid__col--2-of-8">
             Scanning
@@ -32,10 +34,10 @@ class Bluetooth extends Plugin {
         </div>
 
         <div class="label grid__col grid__col--2-of-8">
-            Connected devices
+            Paired devices
         </div>
         <div class="text grid__col grid__col--6-of-8">
-            <select id="BT_Devices"></select>
+            <select id="BT_PairedDevices"></select>
         </div>
 
         <div class="label grid__col grid__col--2-of-8"></div>
@@ -75,7 +77,7 @@ class Bluetooth extends Plugin {
         this.connectButton              = document.getElementById('BT_Connect');
         this.disconnectButton           = document.getElementById('BT_Disconnect');
 
-        //bind buttons
+        // Bind buttons
         this.scanButton.onclick         = this.scanForDevices.bind(this);
         this.pairButton.onclick         = this.pairDevice.bind(this);
         this.disconnectButton.onclick   = this.disconnect.bind(this);
@@ -86,11 +88,14 @@ class Bluetooth extends Plugin {
         this.scanningStatus             = document.getElementById('BT_Scanning');
         this.statusMessages             = document.getElementById('statusMessages');
 
-        // ---- Devices -----
-        this.devicesListEl              = document.getElementById('BT_Devices');
+        // ---- Connected Devices -----
+        this.connectedDeviceList       = document.getElementById('BT_ConnectedDevices');
+
+        // ---- Paired Devices -----
+        this.pairedDeviceList           = document.getElementById('BT_PairedDevices');
 
         // ---- Discovered Devices ----
-        this.discoveredDevicesEl        = document.getElementById('BT_DiscoveredDevices');
+        this.discoveredDeviceList       = document.getElementById('BT_DiscoveredDevices');
 
         this.checkDeviceScanning();
         this.getPairedDevices();
@@ -110,7 +115,7 @@ class Bluetooth extends Plugin {
             if (resp === undefined)
                 return;
 
-            this.connected = resp.connected;
+            this.connectedDevices = resp.deviceList;
 
             if (typeof resp.scanning === 'boolean')
                 this.scanning = resp.scanning;
@@ -127,11 +132,10 @@ class Bluetooth extends Plugin {
             }
 
             // bail out if the plugin returns nothing
-            if (resp === undefined || resp.DeviceList.length < 0)
+            if (resp === undefined || resp.deviceList.length < 0)
                 return;
 
-            this.pairedDevices = resp.DeviceList;
-
+            this.pairedDevices = resp.deviceList;
             this.renderPairedDevices();
         });
     }
@@ -145,10 +149,10 @@ class Bluetooth extends Plugin {
                 }
 
                 // bail out if the plugin returns nothing
-                if (resp === undefined || resp.DeviceList.length < 0)
+                if (resp === undefined || resp.deviceList.length < 0)
                     return;
 
-                this.discoveredDevices = resp.DeviceList;
+                this.discoveredDevices = resp.deviceList;
                 this.renderDiscoveredDevices();
             });
         }
@@ -165,36 +169,42 @@ class Bluetooth extends Plugin {
     /* ----------------------------- RENDERING ------------------------------*/
 
     renderStatus () {
-        if (this.connected !== '') {
-            var deviceInfo = this.pairedDevices.find(deviceInfo=>deviceInfo.Address==this.connected);
-            this.connectedStatus.innerHTML = deviceInfo.Name;
-        } else
-            this.connectedStatus.innerHTML = 'Not Connected';
-
+        this.renderConnectedDevices();
         this.scanningStatus.innerHTML = this.scanning === true ? 'ON' : 'OFF';
     }
 
     renderPairedDevices () {
-        this.devicesListEl.innerHTML = '';
+        this.pairedDeviceList.innerHTML = '';
         for (var i=0; i<this.pairedDevices.length; i++) {
-            var newChild = this.devicesListEl.appendChild(document.createElement("option"));
-            if (this.pairedDevices[i].Name === '')
-                newChild.innerHTML = `${this.pairedDevices[i].Address}`;
+            var newChild = this.pairedDeviceList.appendChild(document.createElement("option"));
+            if (this.pairedDevices[i].name === "")
+                newChild.innerHTML = `${this.pairedDevices[i].address}`;
             else
-                newChild.innerHTML = `${this.pairedDevices[i].Name}`;
+                newChild.innerHTML = `${this.pairedDevices[i].name}`;
         }
     }
 
     renderDiscoveredDevices () {
-        this.discoveredDevicesEl.innerHTML = '';
+        this.discoveredDeviceList.innerHTML = '';
         for (var i=0; i<this.discoveredDevices.length; i++) {
-            var newChild = this.discoveredDevicesEl.appendChild(document.createElement("option"));
-            if (this.discoveredDevices[i].Name === '')
-                newChild.innerHTML = `${this.discoveredDevices[i].Address}`;
+            var newChild = this.discoveredDeviceList.appendChild(document.createElement("option"));
+            if (this.discoveredDevices[i].name === "")
+                newChild.innerHTML = `${this.discoveredDevices[i].address}`;
             else
-                newChild.innerHTML = `${this.discoveredDevices[i].Name}`;
+                newChild.innerHTML = `${this.discoveredDevices[i].name}`;
 
             newChild.value = JSON.stringify(this.discoveredDevices[i]);
+        }
+    }
+
+    renderConnectedDevices () {
+        this.connectedDeviceList.innerHTML = '';
+        for (var i=0; i<this.connectedDevices.length; i++) {
+            var newChild = this.connectedDeviceList.appendChild(document.createElement("option"));
+            if (this.connectedDevices[i].name === "")
+                newChild.innerHTML = `${this.connectedDevices[i].address}`;
+            else
+                newChild.innerHTML = `${this.connectedDevices[i].name}`;
         }
     }
 
@@ -223,72 +233,80 @@ class Bluetooth extends Plugin {
             this.Timer = setInterval(this.getDiscoveredDevices.bind(this), 4000);
 
             this.status(`Scanning...`);
-            // stop scan after 1 min
-            setTimeout(this.stopScan.bind(this), 60000);
+            // stop scan after 15s
+            setTimeout(this.stopScan.bind(this), 15000);
 
         });
     }
 
     stopScan() {
         this.status(`Stopping Scan`);
-        clearInterval(this.Timer);
         api.putPlugin(this.callsign, 'StopScan', null, (err, resp) => {
             if (err !== null) {
                 console.error(err);
                 return;
             }
 
-            setTimeout(this.update.bind(this), 2000);
+            clearInterval(this.Timer);
+            setTimeout(this.update.bind(this), 4000);
             this.status(`Scan stopped`);
         });
     }
 
     pairDevice() {
         var val = JSON.parse(document.getElementById('BT_DiscoveredDevices').value);
-        if (val.Name === '')
-            this.status(`Pairing with ${val.Address}`);
+        if (val.name === "")
+            this.status(`Pairing with ${val.address}`);
         else
-            this.status(`Pairing with ${val.Name}`);
+            this.status(`Pairing with ${val.name}`);
 
-        api.putPlugin(this.callsign, 'Pair', '{"Address" : "' + val.Address + '"}', (err, resp) => {
+        api.putPlugin(this.callsign, 'Pair', '{"address" : "' + val.address + '"}', (err, resp) => {
             if (err !== null) {
                 console.error(err);
                 return;
             }
 
-            // update Paired device list after 2s
-            setTimeout(this.getPairedDevices.bind(this), 2000);
+            // update Paired device list after 3s
+            setTimeout(this.getPairedDevices.bind(this), 3000);
+            setTimeout(this.update.bind(this), 5000);
         });
     }
 
     connect() {
-        var idx = this.devicesListEl.selectedIndex;
+        var idx = this.pairedDeviceList.selectedIndex;
+        if (this.pairedDevices[idx].name === "")
+            this.status(`Connecting to ${this.pairedDevices[idx].address}`);
+        else
+            this.status(`Connecting to ${this.pairedDevices[idx].name}`);
 
-        this.status(`Connecting to ${this.pairedDevices[idx].Name}`);
-        api.putPlugin(this.callsign, 'Connect', '{"Address" : "' + this.pairedDevices[idx].Address + '"}', (err,resp) =>{
+        api.putPlugin(this.callsign, 'Connect', '{"address" : "' + this.pairedDevices[idx].address + '"}', (err,resp) =>{
             if (err !== null) {
                 console.error(err);
                 return;
             }
 
-            // update after 2s
-            setTimeout(this.update.bind(this), 2000);
+            // update after 3s
+            setTimeout(this.update.bind(this), 3000);
         });
     }
 
     disconnect() {
-        this.status(`Disconnecting to ${this.connected}`);
-        api.deletePlugin(this.callsign, 'Connect', null, (err,resp) =>{
+        var idx = this.connectedDeviceList.selectedIndex;
+        if (this.connectedDevices[idx].name === "")
+            this.status(`Disconnecting to ${this.connectedDevices[idx].address}`);
+        else
+            this.status(`Disconnecting to ${this.connectedDevices[idx].name}`);
+
+        api.putPlugin(this.callsign, 'Disconnect', '{"address" : "' + this.connectedDevices[idx].address + '"}', (err,resp) =>{
             if (err !== null) {
                 console.error(err);
                 return;
             }
 
-            // update after 2s
-            setTimeout(this.update.bind(this), 2000);
+            // update after 3s
+            setTimeout(this.update.bind(this), 3000);
         });
     }
-
 }
 
 window.pluginClasses = window.pluginClasses || {};
