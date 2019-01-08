@@ -17,6 +17,11 @@ html {
     transform: translateZ(0);
 }
 
+button[disabled  = disabled], button:disabled{
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .main {
     max-width: 959px;
     max-height: calc(100% - 80px);
