@@ -32,7 +32,7 @@ class Bluetooth extends Plugin {
         </div>
 
         <div class="label grid__col grid__col--2-of-8">
-            Connected devices
+            Paired devices
         </div>
         <div class="text grid__col grid__col--6-of-8">
             <select id="BT_Devices"></select>
@@ -170,7 +170,7 @@ class Bluetooth extends Plugin {
             this.disconnectButton.disabled = false;
             var deviceInfo = this.pairedDevices.find(deviceInfo=>deviceInfo.Address==this.connected);
             this.connectedStatus.innerHTML = deviceInfo.Name;
-        } else{
+        } else {
             this.disconnectButton.disabled  = true;
             this.connectedStatus.innerHTML = 'Not Connected';
         }
@@ -200,32 +200,27 @@ class Bluetooth extends Plugin {
         }
     }
 
-    status(message) {
+    status(message, timeout) {
         window.clearTimeout(this.statusMessageTimer);
         this.statusMessages.innerHTML = message;
 
-        // clear after 5s
-        this.statusMessageTimer = setTimeout(this.status, 5000, '');
-    }
-    status1(message) {
-        window.clearTimeout(this.statusMessageTimer);
-        this.statusMessages.innerHTML = message;
-        // clear after 5s
-        this.statusMessageTimer = setTimeout(this.status1, 60000, '');
+        // clear after timeout
+        if (timeout)
+            this.statusMessageTimer = setTimeout(this.status, timeout, '');
     }
 
     /* ----------------------------- BUTTONS ------------------------------*/
 
     scanForDevices() {
-        this.status(`Start scanning`);
-        this.scanButton.disabled = true;
-        this.pairButton.disabled = true;
-        this.connectButton.disabled = true;
         api.putPlugin(this.callsign, 'Scan', null, (err, resp) => {
             if (err !== null) {
+                this.status(`Failed to Scan`, 5000);
                 console.error(err);
                 return;
             }
+            this.scanButton.disabled = true;
+            this.pairButton.disabled = true;
+            this.connectButton.disabled = true;
 
             // update after 2s
             setTimeout(this.update.bind(this), 2000);
@@ -233,7 +228,7 @@ class Bluetooth extends Plugin {
             // update discovered device list in every 4s
             this.Timer = setInterval(this.getDiscoveredDevices.bind(this), 4000);
 
-            this.status1(`Scanning...`);
+            this.status(`Scanning...`);
             // stop scan after 1 min
             setTimeout(this.stopScan.bind(this), 60000);
 
@@ -241,31 +236,33 @@ class Bluetooth extends Plugin {
     }
 
     stopScan() {
-        this.status(`Stopping Scan`);
-        this.scanButton.disabled = false;
-        this.pairButton.disabled = false;
-        this.connectButton.disabled = false;
+        this.status(`Stopping Scan`, 5000);
         clearInterval(this.Timer);
         api.putPlugin(this.callsign, 'StopScan', null, (err, resp) => {
             if (err !== null) {
+	        this.status(`Failed to stop scan`, 5000);
                 console.error(err);
                 return;
             }
+            this.scanButton.disabled = false;
+            this.pairButton.disabled = false;
+            this.connectButton.disabled = false;
 
             setTimeout(this.update.bind(this), 2000);
-            this.status(`Scan stopped`);
+            this.status(`Scan stopped`, 5000);
         });
     }
 
     pairDevice() {
         var val = JSON.parse(document.getElementById('BT_DiscoveredDevices').value);
         if (val.Name === '')
-            this.status(`Pairing with ${val.Address}`);
+            this.status(`Pairing with ${val.Address}`, 5000);
         else
-            this.status(`Pairing with ${val.Name}`);
+            this.status(`Pairing with ${val.Name}`, 5000);
 
         api.putPlugin(this.callsign, 'Pair', '{"Address" : "' + val.Address + '"}', (err, resp) => {
             if (err !== null) {
+	        this.status(`Failed to pair with ${val.Address}`, 5000);
                 console.error(err);
                 return;
             }
@@ -277,14 +274,15 @@ class Bluetooth extends Plugin {
 
     connect() {
         var idx = this.devicesListEl.selectedIndex;
-        this.disconnectButton.disabled = false;
-        this.connectButton.disabled = true;
-        this.status(`Connecting to ${this.pairedDevices[idx].Name}`);
+        this.status(`Connecting to ${this.pairedDevices[idx].Name}`, 5000);
         api.putPlugin(this.callsign, 'Connect', '{"Address" : "' + this.pairedDevices[idx].Address + '"}', (err,resp) =>{
             if (err !== null) {
+                this.status(`Failed to connect with ${this.pairedDevices[idx].Name}`, 5000);
                 console.error(err);
                 return;
             }
+            this.disconnectButton.disabled = false;
+            this.connectButton.disabled = true;
 
             // update after 2s
             setTimeout(this.update.bind(this), 2000);
@@ -292,18 +290,18 @@ class Bluetooth extends Plugin {
     }
 
     disconnect() {
-        this.connectButton.disabled = false;
-        this.status(`Disconnecting to ${this.connected}`);
+        this.status(`Disconnecting to ${this.connected}`, 5000);
         api.deletePlugin(this.callsign, 'Connect', null, (err,resp) =>{
             if (err !== null) {
+	        this.status(`Failed to disconnect with ${this.connected}`, 5000);
                 console.error(err);
                 return;
             }
-
+            this.connectButton.disabled = false;
+            this.disconnectButton.disabled = true;
             // update after 2s
             setTimeout(this.update.bind(this), 2000);
         });
-       this.disconnectButton.disabled = true;
     }
 
 }
