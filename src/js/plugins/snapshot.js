@@ -23,11 +23,14 @@ class Snapshot extends Plugin {
             <button id="snapshotButton" type="button">CREATE</button>
         </div>
 
+        <div id="statusMessages" class="text grid__col grid__col--8-of-8"></div>
+
         <div id="myOutput">
             <img id="snapshotOutput" />
         </div>`;
 
       var snapshotButton = document.getElementById('snapshotButton');
+      this.statusMessages = document.getElementById('statusMessages');
       snapshotButton.onclick = this.createSnapshot.bind(this);
     }
 
@@ -36,10 +39,32 @@ class Snapshot extends Plugin {
     }
 
     createSnapshot() {
-        var snapshotImage = document.getElementById('snapshotOutput');
-        snapshotImage.src = '';
-        snapshotImage.src = this.getSnapshotLocator();
+        var CurrentTime = new Date().getTime();
+        const _rest = {
+            method  : 'GET',
+            path    : `${this.callsign}/Capture?${CurrentTime}`
+        };
+
+
+        return this.api.req(_rest).then( resp => {
+            this.statusMessage('Got Snapshot Image');
+            if (resp === null)
+                return;
+
+            this.statusMessage('Hai Test');
+            var snapshotImage = document.getElementById('snapshotOutput');
+            snapshotImage.src = '';
+            snapshotImage.src = "data:image/png;base64," + this.base64encode(resp.image);
+            this.statusMessage(_rest.path);
+        });
+    }
+
+    base64encode(binary) {
+        return btoa(unescape(encodeURIComponent(binary)));
+    }
+
+    statusMessage(message) {
+        this.statusMessages.innerHTML = message;
     }
 }
-
 export default Snapshot;
