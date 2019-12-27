@@ -39,7 +39,7 @@ export default class WpeApi {
         ];
     };
 
-    handleRequest(method, URL, body, type, callback) {
+    handleRequest(method, URL, body, requesttype, responsetype, callback) {
         var self = this;
 
         var xmlHttp = new XMLHttpRequest();
@@ -50,21 +50,21 @@ export default class WpeApi {
                 if (xmlHttp.readyState == 4) {
                     if (xmlHttp.status >= 200 && xmlHttp.status <= 299) {
                         var resp;
-                        if (xmlHttp.responseText !== '') {
-                            if (type === 'json') {
+                        if (xmlHttp.response !== '') {
+                            if (requesttype === 'json') {
                                 try {
                                     resp = JSON.parse( xmlHttp.responseText.replace(/\\x([0-9A-Fa-f]{2})/g, '') );
                                 } catch(e) {
                                 }
                             } else {
-                                resp = xmlHttp.responseText;
+                                resp = xmlHttp.response;
                             }
                         }
                         //console.log('RESP: ', resp);
                         callback(null, resp, xmlHttp.status);
                     } else if (xmlHttp.status >= 300) {
-                        //console.log('ERR: ' + xmlHttp.responseText);
-                        callback(xmlHttp.responseText, null);
+                        //console.log('ERR: ' + xmlHttp.response);
+                        callback(xmlHttp.response, null);
                     } else if (xmlHttp.status === 0) {
                         //console.log('ERR: connection interrupted');
                         callback('Connection interrupted', null);
@@ -75,6 +75,9 @@ export default class WpeApi {
             xmlHttp.ontimeout = function () {
                 callback('Connection timed out', null);
             };
+        }
+        if (responsetype === 'arraybuffer') {
+            xmlHttp.responseType = 'arraybuffer';
         }
         if (body !== null)
             if (typeof body === 'string' || body instanceof String)
@@ -103,7 +106,7 @@ export default class WpeApi {
                     if (rest) {
                         console.debug(`<JSON> ${jsonrpc.plugin }.1.${jsonrpc.method} failed, trying <REST> ${rest.method} ${rest.path}`);
                         console.debug('<JSON> Error: ', error);
-                        this.handleRequest(rest.method, this.getURLStart('http') + rest.path, rest.body, 'json', (err, resp) => {
+                        this.handleRequest(rest.method, this.getURLStart('http') + rest.path, rest.body, 'json', '', (err, resp) => {
                             if (err)
                                 reject(err);
                             else
@@ -118,7 +121,7 @@ export default class WpeApi {
                 if (rest === undefined)
                    return reject('No rest or jsonrpc options provided, bailing out');
 
-                this.handleRequest(rest.method, this.getURLStart('http') + rest.path, rest.body, 'rest', (err, resp) => {
+                this.handleRequest(rest.method, this.getURLStart('http') + rest.path, rest.body, 'rest', rest.type, (err, resp) => {
                     if (err)
                         reject(err);
                     else

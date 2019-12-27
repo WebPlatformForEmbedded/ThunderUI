@@ -34,33 +34,30 @@ class Snapshot extends Plugin {
       snapshotButton.onclick = this.createSnapshot.bind(this);
     }
 
-    getSnapshotLocator() {
-        return this.api.getURLStart('http') + 'Snapshot/Capture?' + new Date().getTime();
-    }
-
     createSnapshot() {
         var CurrentTime = new Date().getTime();
         const _rest = {
             method  : 'GET',
-            path    : `${this.callsign}/Capture?${CurrentTime}`
+            path    : `${this.callsign}/Capture?${CurrentTime}`,
+            type    : 'arraybuffer'
         };
-
+        const _rpc = {
+            plugin : this.callsign,
+            method : 'capture'
+        }
 
         return this.api.req(_rest).then( resp => {
-            this.statusMessage('Got Snapshot Image');
-            if (resp === null)
+            if (resp === null || resp === undefined)
                 return;
 
-            this.statusMessage('Hai Test');
+            var image = resp.image ? resp.image : resp;
+
             var snapshotImage = document.getElementById('snapshotOutput');
             snapshotImage.src = '';
-            snapshotImage.src = "data:image/png;base64," + this.base64encode(resp.image);
-            this.statusMessage(_rest.path);
-        });
-    }
+            snapshotImage.setAttribute('src', 'data:image/png;base64,' + btoa(String.fromCharCode.apply(null, new Uint8Array(image))));
 
-    base64encode(binary) {
-        return btoa(unescape(encodeURIComponent(binary)));
+            this.statusMessage("Snapshot Device:" + resp.device);
+        });
     }
 
     statusMessage(message) {
